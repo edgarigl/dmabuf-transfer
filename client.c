@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     if (vmid != UINT32_MAX) {
         dma_fd = xen_receive_fd(vmid, sk_fd);
     } else {
-        dma_fd = receive_fd(sk_fd);
+        dma_fd = unix_receive_fd(sk_fd);
     }
 
     ret = fstat(dma_fd, &st);

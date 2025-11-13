@@ -26,7 +26,7 @@
 #define REMOTE_PORT_SK
 
 int sk_open(const char *descr);
-void send_fd(int conn, int fd);
-int receive_fd(int conn);
+void unix_send_fd(int conn, int fd);
+int unix_receive_fd(int conn);
 
 #endif

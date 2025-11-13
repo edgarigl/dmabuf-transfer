@@ -19,7 +19,7 @@
 #define TCP_PREFIX "tcp:"
 #define TCPD_PREFIX "tcpd:"
 
-void send_fd(int conn, int fd) {
+void unix_send_fd(int conn, int fd) {
     struct msghdr msgh;
     struct iovec iov;
     union {
@@ -56,7 +56,7 @@ void send_fd(int conn, int fd) {
 
 /* Receive file descriptor passed from the server over
  * the already-connected unix domain socket @conn. */
-int receive_fd(int conn) {
+int unix_receive_fd(int conn) {
     struct msghdr msgh;
     struct iovec iov;
     union {

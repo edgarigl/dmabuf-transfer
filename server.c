@@ -22,49 +22,57 @@
 int create_udmabuf(struct mapped_range *ranges, const int range_count,
                    const size_t range_size, const size_t page_size)
 {
-	for (int i = 0; i < range_count; ++i) {
+	struct udmabuf_create_list *create;
+	size_t create_size;
+    int udmabuf;
+    int dma_fd;
+    int i;
+
+	for (i = 0; i < range_count; i++) {
+        int j;
+
 		if (create_range(&ranges[i], "udmabuf-range", range_size, i + 1) < 0) {
 			fprintf(stderr, "Failed to create range %d, aborting.\n", i);
-			for (int j = 0; j <= i; ++j)
+			for (j = 0; j <= i; j++)
 				destroy_range(&ranges[j]);
 			return EXIT_FAILURE;
 		}
 	}
 
-	int udmabuf = open("/dev/udmabuf", O_RDWR | O_CLOEXEC);
+	udmabuf = open("/dev/udmabuf", O_RDWR | O_CLOEXEC);
 	if (udmabuf < 0) {
 		perror("open /dev/udmabuf");
-		for (int i = 0; i < range_count; ++i)
+		for (i = 0; i < range_count; i++)
 			destroy_range(&ranges[i]);
 		return EXIT_FAILURE;
 	}
 
-	size_t create_size = sizeof(struct udmabuf_create_list) +
+	create_size = sizeof(struct udmabuf_create_list) +
 			     (size_t)range_count *
 				     sizeof(struct udmabuf_create_item);
-	struct udmabuf_create_list *create = calloc(1, create_size);
+	create = calloc(1, create_size);
 	if (!create) {
 		fprintf(stderr, "Failed to allocate udmabuf_create_list\n");
 		close(udmabuf);
-		for (int i = 0; i < range_count; ++i)
+		for (i = 0; i < range_count; i++)
 			destroy_range(&ranges[i]);
 		return EXIT_FAILURE;
 	}
 
 	create->flags = UDMABUF_FLAGS_CLOEXEC;
 	create->count = range_count;
-	for (int i = 0; i < range_count; ++i) {
-		create->list[i].memfd = (uint32_t)ranges[i].memfd;
+	for (i = 0; i < range_count; i++) {
+		create->list[i].memfd = ranges[i].memfd;
 		create->list[i].offset = 0;
 		create->list[i].size = ranges[i].length;
 	}
 
-	int dma_fd = ioctl(udmabuf, UDMABUF_CREATE_LIST, create);
+	dma_fd = ioctl(udmabuf, UDMABUF_CREATE_LIST, create);
 	if (dma_fd < 0) {
 		perror("ioctl UDMABUF_CREATE_LIST");
 		free(create);
 		close(udmabuf);
-		for (int i = 0; i < range_count; ++i)
+		for (i = 0; i < range_count; i++)
 			destroy_range(&ranges[i]);
 		return EXIT_FAILURE;
 	}
@@ -79,14 +87,14 @@ int create_udmabuf(struct mapped_range *ranges, const int range_count,
 
 int main(int argc, char *argv[])
 {
-	long page_size_sys = sysconf(_SC_PAGESIZE);
-	const size_t page_size = (size_t)page_size_sys;
+	const size_t page_size = sysconf(_SC_PAGESIZE);
 	const size_t range_size = page_size * 4;
 	const int range_count = 4;
 	struct mapped_range ranges[range_count];
     uint32_t vmid = UINT32_MAX;
     int dma_fd;
     int sk_fd;
+    int i;
 
     if (argc < 2) {
         printf("USAGE: %s: socket address\n", argv[0]);
@@ -108,16 +116,16 @@ int main(int argc, char *argv[])
     if (vmid != UINT32_MAX) {
         xen_send_fd(vmid, sk_fd, dma_fd);
     } else {
-        send_fd(sk_fd, dma_fd);
+        unix_send_fd(sk_fd, dma_fd);
     }
 
     /* Since we don't have any handshake, wait for a while before destroying. */
     sleep(2);
-    close(sk_fd);
-	close(dma_fd);
 
-	for (int i = 0; i < range_count; ++i)
+	for (i = 0; i < range_count; i++)
 		destroy_range(&ranges[i]);
 
+    close(sk_fd);
+	close(dma_fd);
 	return EXIT_SUCCESS;
 }
