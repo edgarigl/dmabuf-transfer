@@ -24,7 +24,6 @@ struct xen_dmabuf {
     uint32_t refs[];
 };
 
-
 static xengnttab_handle * xen_get_handle(void)
 {
     static xengnttab_handle *xgt = NULL;
@@ -38,11 +37,11 @@ static xengnttab_handle * xen_get_handle(void)
         abort();
     }
 
-   return xgt;
+    return xgt;
 }
 
 static struct xen_dmabuf *xen_dmabuf_serialize(uint32_t domid, int fd,
-                                               unsigned int num_pages)
+        unsigned int num_pages)
 {
     xengnttab_handle *xgt = xen_get_handle();
     struct xen_dmabuf *xdb;
@@ -53,7 +52,7 @@ static struct xen_dmabuf *xen_dmabuf_serialize(uint32_t domid, int fd,
         return NULL;
 
     ret = xengnttab_dmabuf_imp_to_refs(xgt, domid, fd, num_pages,
-                                       &xdb->refs[0]);
+            &xdb->refs[0]);
     if (ret < 0) {
         int saved_errno = errno;
         free(xdb);
@@ -92,7 +91,7 @@ int xen_send_fd(uint32_t vmid, int sk_fd, int dma_fd)
     }
 
     written = safe_write(sk_fd, xdb,
-                         sizeof *xdb + sizeof xdb->refs[0] * xdb->num_refs);
+            sizeof *xdb + sizeof xdb->refs[0] * xdb->num_refs);
 
     free(xdb);
     if (written < 0)
@@ -138,7 +137,7 @@ int xen_receive_fd(uint32_t vmid, int fd)
 
     printf("export num-refs=%d\n", xdb->num_refs);
     ret = xengnttab_dmabuf_exp_from_refs(xgt, vmid, 0, xdb->num_refs,
-                                         xdb->refs, &dma_fd32);
+            xdb->refs, &dma_fd32);
     if (ret < 0) {
         perror("xengnttab_dmabuf_exp_from_refs");
         free(xdb);
@@ -150,10 +149,4 @@ int xen_receive_fd(uint32_t vmid, int fd)
     dma_fd = dma_fd32;
     printf("return dma_fd=%d\n", dma_fd);
     return dma_fd;
-}
-
-void xen_imp_close(int fd)
-{
-    xengnttab_handle *xgt = xen_get_handle();
-    xengnttab_dmabuf_imp_release(xgt, fd);
 }

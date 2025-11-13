@@ -72,6 +72,6 @@ int main(int argc, char *argv[])
 
 err:
     close(sk_fd);
-	close(dma_fd);
-	return EXIT_SUCCESS;
+    close(dma_fd);
+    return EXIT_SUCCESS;
 }
