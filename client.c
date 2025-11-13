@@ -19,11 +19,13 @@
 
 int main(int argc, char *argv[])
 {
+    const size_t page_size = sysconf(_SC_PAGESIZE);
     uint32_t vmid = UINT32_MAX;
     struct stat st;
     int dma_fd;
     int sk_fd;
     int ret;
+    int i;
 
     if (argc < 2) {
         printf("USAGE: %s: socket address\n", argv[0]);
@@ -36,6 +38,10 @@ int main(int argc, char *argv[])
 
     /* Create socket.  */
     sk_fd = sk_open(argv[1]);
+    if (sk_fd < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
 
     if (vmid != UINT32_MAX) {
         dma_fd = xen_receive_fd(vmid, sk_fd);
@@ -52,18 +58,14 @@ int main(int argc, char *argv[])
     /* Use the buffer */
     if (st.st_size)
     {
-        unsigned int i;
         void *addr;
-        char *buf;
 
         addr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, dma_fd, 0);
 
         if (addr != MAP_FAILED) {
-            buf = addr;
-            for (i = 0; i < st.st_size; i += 512) {
-                printf("%x ", buf[i]);
+            for (i = 0; i < st.st_size; i += 4 * page_size) {
+                fputs(addr + i, stdout);
             }
-            printf("\n");
             munmap(addr, st.st_size);
         } else {
             perror("mmap");

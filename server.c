@@ -13,6 +13,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include "sk.h"
@@ -31,7 +32,7 @@ int create_udmabuf(struct mapped_range *ranges, const int range_count,
     for (i = 0; i < range_count; i++) {
         int j;
 
-        if (create_range(&ranges[i], "udmabuf-range", range_size, i + 1) < 0) {
+        if (create_range(&ranges[i], "udmabuf-range", range_size, i) < 0) {
             fprintf(stderr, "Failed to create range %d, aborting.\n", i);
             for (j = 0; j <= i; j++)
                 destroy_range(&ranges[j]);
@@ -77,7 +78,7 @@ int create_udmabuf(struct mapped_range *ranges, const int range_count,
         return EXIT_FAILURE;
     }
 
-    printf("Created dma-buf FD %d spanning %d ranges (%zu bytes each).\n",
+    printf("Created udmabuf fd %d with %d ranges (%zu bytes each).\n",
             dma_fd, range_count, range_size);
 
     free(create);
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
     uint32_t vmid = UINT32_MAX;
     int dma_fd;
     int sk_fd;
+    char c;
     int i;
 
     if (argc < 2) {
@@ -105,12 +107,12 @@ int main(int argc, char *argv[])
         vmid = strtoul(argv[2], NULL, 0);
     }
 
+    /* Create socket.  */
+    sk_fd = sk_open(argv[1]);
+
     /* Create user-space DMABUF.  */
     memset(ranges, 0, sizeof(ranges));
     dma_fd = create_udmabuf(ranges, range_count, range_size, page_size);
-
-    /* Create socket.  */
-    sk_fd = sk_open(argv[1]);
 
     /* Transfer DMABUF to peer.  */
     if (vmid != UINT32_MAX) {
@@ -119,8 +121,8 @@ int main(int argc, char *argv[])
         unix_send_fd(sk_fd, dma_fd);
     }
 
-    /* Since we don't have any handshake, wait for a while before destroying. */
-    sleep(2);
+    /* Wait for peer to close the connection. */
+    recv(sk_fd, &c, sizeof c, 0);
 
     for (i = 0; i < range_count; i++)
         destroy_range(&ranges[i]);

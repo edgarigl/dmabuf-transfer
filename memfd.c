@@ -14,11 +14,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "memfd.h"
 
 int create_range(struct mapped_range *range, const char *name,
-            size_t length, uint8_t fill)
+            size_t length, int id)
 {
     range->memfd = -1;
     range->addr = MAP_FAILED;
@@ -44,7 +45,9 @@ int create_range(struct mapped_range *range, const char *name,
         return -1;
     }
 
-    memset(addr, fill, length);
+    time_t now = time(NULL);
+    snprintf(addr, length, "range[%d] %lu bytes created at %lds\n", id, length, now);
+    fputs(addr, stdout);
 
     if (munmap(addr, length) < 0) {
         perror("munmap");

@@ -5,5 +5,5 @@ struct mapped_range {
 };
 
 int create_range(struct mapped_range *range, const char *name,
-                 size_t length, uint8_t fill);
+                 size_t length, int id);
 void destroy_range(struct mapped_range *range);
