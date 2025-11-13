@@ -4,7 +4,7 @@ TARGETS = server client
 
 LDLIBS += -lxengnttab
 
-OBJS = sk.o xen-dmabuf.o safeio.o
+OBJS = memfd.o sk.o xen-dmabuf.o safeio.o
 
 all: $(TARGETS)
 

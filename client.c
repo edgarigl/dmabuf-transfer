@@ -2,8 +2,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/udmabuf.h>
-#include <linux/memfd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,17 +14,16 @@
 #include <unistd.h>
 
 #include "xen-dmabuf.h"
+#include "safeio.h"
 #include "sk.h"
 
 int main(int argc, char *argv[])
 {
-    long page_size_sys = sysconf(_SC_PAGESIZE);
-    const size_t page_size = (size_t)page_size_sys;
-    const size_t range_size = page_size * 4;
-    const int range_count = 4;
     uint32_t vmid = UINT32_MAX;
+    struct stat st;
     int dma_fd;
     int sk_fd;
+    int ret;
 
     if (argc < 2) {
         printf("USAGE: %s: socket address\n", argv[0]);
@@ -46,30 +43,34 @@ int main(int argc, char *argv[])
         dma_fd = receive_fd(sk_fd);
     }
 
+    ret = fstat(dma_fd, &st);
+    if (ret) {
+        perror("fstat");
+        goto err;
+    }
+
     /* Use the buffer */
+    if (st.st_size)
     {
-        size_t len = range_size * range_count;
         unsigned int i;
         void *addr;
         char *buf;
-        char c;
 
-        safe_read(dma_fd, &c, 1);
-        printf("c=%d\n", c);
-
-        addr = mmap(0, len, PROT_READ|PROT_WRITE, MAP_SHARED, dma_fd, 0);
-        printf("mmap %p\n", addr);
+        addr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, dma_fd, 0);
 
         if (addr != MAP_FAILED) {
             buf = addr;
-            for (i = 0; i < len; i += 1024) {
+            for (i = 0; i < st.st_size; i += 512) {
                 printf("%x ", buf[i]);
             }
             printf("\n");
-            munmap(addr, len);
+            munmap(addr, st.st_size);
+        } else {
+            perror("mmap");
         }
     }
 
+err:
     close(sk_fd);
 	close(dma_fd);
 	return EXIT_SUCCESS;

@@ -151,3 +151,9 @@ int xen_receive_fd(uint32_t vmid, int fd)
     printf("return dma_fd=%d\n", dma_fd);
     return dma_fd;
 }
+
+void xen_imp_close(int fd)
+{
+    xengnttab_handle *xgt = xen_get_handle();
+    xengnttab_dmabuf_imp_release(xgt, fd);
+}
